@@ -1,58 +1,138 @@
-<!doctype html>
-
+<!DOCTYPE html>
 <html>
-    <head>
-        <py-script> print('Now you can!') </py-script>|
+<head>
+    <title>Δημιουργία Ηχητικού Σήματος</title>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        label, input, button {
+            display: block;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Δημιουργία Ηχητικού Σήματος</h1>
+         
+    <label for="duration">Εισάγετε τη χρονική διάρκεια κάθε ηχητικού σήματος (σε δευτερόλεπτα):</label>
+    <input type="number" id="duration" min="0.1" step="0.1" placeholder="Δώστε τη χρονική διάρκεια...">
+    <label for="interval">Εισάγετε το χρονικό διάστημα μεταξύ των αναπαραγωγών (σε δευτερόλεπτα):</label>
+    <input type="number" id="interval" min="0.1" step="0.1" placeholder="Δώστε το χρονικό διάστημα...">
+    <label for="totalDuration">Εισάγετε τη συνολική διάρκεια του ήχου (σε δευτερόλεπτα):</label>
+    <input type="number" id="totalDuration" min="0.1" step="0.1" placeholder="Δώστε τη συνολική διάρκεια...">
+    <button onclick="startSound()">Δημιουργία Ηχητικού Σήματος</button>
+    <button onclick="stopSound()">Διακοπή Ηχητικού Σήματος</button>
+    <button onclick="exportSound()">Εξαγωγή Ηχητικού Σήματος</button>
+     
+    <script src="https://cdn.jsdelivr.net/npm/wav-encoder@1.0.1/dist/wav-encoder.min.js"></script>
+    <script>
+        var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        var intervalID;
+        var totalBuffer;
+        var source;
+        var totalDuration;
+        var currentTime = 0;
+        var buffers = [];
 
-        <title>Todo App</title>
-        <link rel="icon" type="image/png" href="./assets/favicon.png" />
-
-        <style>
-            .line-through {
-                text-decoration: line-through;
+        function generateSound() {
+            var duration = parseFloat(document.getElementById('duration').value);
+            if (isNaN(duration) || duration <= 0) {
+                alert("Παρακαλώ εισάγετε έγκυρη χρονική διάρκεια.");
+                return;
             }
-        </style>
-    </head>
+                         
+            var sampleRate = 44100; // Δείγματα ανά δευτερόλεπτο
+            var frequency = 440.0; // Συχνότητα ήχου
+            var numSamples = parseInt(sampleRate * duration);
+            var audioData = new Float32Array(numSamples);
+                         
+            for (var i = 0; i < numSamples; i++) {
+                audioData[i] = Math.sin(2 * Math.PI * frequency * i / sampleRate);
+            }
+                         
+            var audioBuffer = audioCtx.createBuffer(1, numSamples, sampleRate);
+            audioBuffer.copyToChannel(audioData, 0);
+            
+            buffers.push(audioBuffer);
+                         
+            source = audioCtx.createBufferSource();
+            source.buffer = audioBuffer;
+            source.connect(audioCtx.destination);
+            source.start();
+            
+            currentTime += duration;
+            // Καθορίζει πότε θα σταματήσει ο ήχος
+            source.stop(audioCtx.currentTime + duration);
+        }
 
-    <body>
-        <dialog id="loading">
-            <h1>Loading...</h1>
-        </dialog>
+        function startSound() {
+            currentTime = 0;
+            buffers = [];
+            var interval = parseFloat(document.getElementById('interval').value) * 1000; // Μετατροπή σε χιλιοστά του δευτερολέπτου
+            totalDuration = parseFloat(document.getElementById('totalDuration').value); // Διάρκεια σε δευτερόλεπτα
 
-        <nav class="navbar" style="background-color: #000000">
-            <div class="app-header">
-                <a href="/">
-                    <img src="./assets/logo.png" class="logo" />
-                </a>
-                <a class="title" href="" style="color: #f0ab3c">Todo App</a>
-            </div>
-        </nav>
+            if (isNaN(interval) || interval <= 0 || isNaN(totalDuration) || totalDuration <= 0) {
+                alert("Παρακαλώ εισάγετε έγκυρο χρονικό διάστημα ή συνολική διάρκεια.");
+                return;
+            }
 
-        <section class="pyscript">
-            <main>
-                <section>
-                    <div>
-                        <h1>To Do List</h1>
-                    </div>
-                    <div>
-                        <input id="new-task-content" type="text" />
-                        <button id="new-task-btn" type="submit" py-click="add_task">
-                            Add task
-                        </button>
-                    </div>
+            generateSound();  // Πρώτη αναπαραγωγή
+            intervalID = setInterval(function() {
+                if (currentTime < totalDuration) {
+                    generateSound();
+                } else {
+                    clearInterval(intervalID);
+                }
+            }, interval);  // Επαναλαμβανόμενες αναπαραγωγές
+        }
 
-                    <div id="list-tasks-container"></div>
+        function stopSound() {
+            clearInterval(intervalID);
+            if (source) {
+                source.stop();
+            }
+        }
 
-                    <template id="task-template">
-                        <section class="task py-li-element">
-                            <label class="flex items-center p-2">
-                                <input style="vertical-align: middle;" type="checkbox" />
-                                <p style="display: inline;"></p>
-                            </label>
-                        </section>
-                    </template>
-                </section>
-            </main>
+        function exportSound() {
+            if (buffers.length === 0) {
+                alert("Δεν υπάρχει ηχητικό σήμα για εξαγωγή.");
+                return;
+            }
+            
+            // Δημιουργία ενός buffer για τη συνολική διάρκεια
+            var totalSamples = 0;
+            buffers.forEach(buffer => {
+                totalSamples += buffer.length;
+            });
+            
+            totalBuffer = audioCtx.createBuffer(1, totalSamples, audioCtx.sampleRate);
+            var offset = 0;
+            buffers.forEach(buffer => {
+                totalBuffer.copyToChannel(buffer.getChannelData(0), 0, offset);
+                offset += buffer.length;
+            });
 
-            <script type="py" src="./main.py" config="./pyscript.toml"></script>
-        </section>
+            const audioData = {
+                sampleRate: totalBuffer.sampleRate,
+                channelData: [totalBuffer.getChannelData(0)]
+            };
+            
+            WavEncoder.encode(audioData).then((buffer) => {
+                const blob = new Blob([buffer], { type: "audio/wav" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.style.display = "none";
+                a.href = url;
+                a.download = "sound.wav";
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+            });
+        }
+    </script>
+</body>
+</html>
+
