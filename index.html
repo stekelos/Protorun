@@ -136,3 +136,53 @@
 </body>
 </html>
 
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Υπολογισμός Βάρδιας</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f2f2f2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+        input, button {
+            padding: 10px;
+            margin: 5px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Υπολογισμός Βάρδιας</h1>
+    <label for="dateInput">Εισάγετε την ημερομηνία (π.χ. 2024-05-31):</label>
+    <input type="date" id="dateInput">
+    <button onclick="calculateShift()">Υπολογισμός</button>
+    <p id="result"></p>
+
+    <script>
+        function calculateShift() {
+            const startDate = new Date('2024-05-31');
+            const inputDate = new Date(document.getElementById('dateInput').value);
+            const shifts = ['Πρωί', 'Μεσημέρι', 'Βράδυ', 'Αδιάθετο', 'Ρεπό'];
+
+            // Υπολογισμός της διαφοράς σε ημέρες
+            const diffTime = Math.abs(inputDate - startDate);
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+            // Υπολογισμός βάρδιας
+            const shiftIndex = diffDays % shifts.length;
+            const shift = shifts[shiftIndex];
+
+            document.getElementById('result').innerText = `Η βάρδια σου είναι: ${shift}`;
+        }
+    </script>
+</body>
+</html>
