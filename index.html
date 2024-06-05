@@ -85,9 +85,31 @@
     let repeatCount = 0;
     let startTime;
     let isLocked = false;
+    let wakeLock = null;
 
     // Web Audio API context
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    async function requestWakeLock() {
+        if ('wakeLock' in navigator) {
+            try {
+                wakeLock = await navigator.wakeLock.request('screen');
+                console.log('Wake lock is active');
+            } catch (err) {
+                console.error(`${err.name}, ${err.message}`);
+            }
+        }
+    }
+
+    function releaseWakeLock() {
+        if (wakeLock !== null) {
+            wakeLock.release()
+                .then(() => {
+                    wakeLock = null;
+                    console.log('Wake lock is released');
+                });
+        }
+    }
 
     function playBeep(duration) {
         const oscillator = audioCtx.createOscillator();
@@ -103,6 +125,11 @@
 
         oscillator.start(audioCtx.currentTime);
         oscillator.stop(audioCtx.currentTime + duration); // Duration of beep
+
+        // Vibrate for the same duration
+        if (navigator.vibrate) {
+            navigator.vibrate(duration * 1000);
+        }
     }
 
     function updateDisplay() {
@@ -129,6 +156,10 @@
 
         if (timer) cancelAnimationFrame(timer);
         playBeep(0.39 * 3); // Play longer beep at the start
+
+        // Request wake lock
+        requestWakeLock();
+
         timer = requestAnimationFrame(tick);
     }
 
@@ -143,6 +174,10 @@
             if (repeatCount >= repeats) {
                 playBeep(0.39 * 3); // Play longer beep at the end
                 cancelAnimationFrame(timer);
+
+                // Release wake lock
+                releaseWakeLock();
+
                 alert('Completed all repeats!');
                 return;
             } else {
@@ -164,7 +199,11 @@
     document.getElementById('start-button').addEventListener('click', startTimer);
 
     document.getElementById('stop-button').addEventListener('click', () => {
-        if (!isLocked) cancelAnimationFrame(timer);
+        if (!isLocked) {
+            cancelAnimationFrame(timer);
+            // Release wake lock
+            releaseWakeLock();
+        }
     });
 
     document.getElementById('reset-button').addEventListener('click', () => {
@@ -176,6 +215,9 @@
             document.getElementById('time-input').value = '';
             document.getElementById('repeats-input').value = '';
             updateDisplay();
+
+            // Release wake lock
+            releaseWakeLock();
         }
     });
 
@@ -185,3 +227,4 @@
 </script>
 </body>
 </html>
+
