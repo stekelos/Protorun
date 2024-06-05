@@ -1,188 +1,187 @@
 <!DOCTYPE html>
-<html>
-<head>
-    <title>Δημιουργία Ηχητικού Σήματος</title>
-    <meta charset="UTF-8">
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-        }
-        label, input, button {
-            display: block;
-            margin: 10px 0;
-        }
-    </style>
-</head>
-<body>
-    <h1>Δημιουργία Ηχητικού Σήματος</h1>
-         
-    <label for="duration">Εισάγετε τη χρονική διάρκεια κάθε ηχητικού σήματος (σε δευτερόλεπτα):</label>
-    <input type="number" id="duration" min="0.1" step="0.1" placeholder="Δώστε τη χρονική διάρκεια...">
-    <label for="interval">Εισάγετε το χρονικό διάστημα μεταξύ των αναπαραγωγών (σε δευτερόλεπτα):</label>
-    <input type="number" id="interval" min="0.1" step="0.1" placeholder="Δώστε το χρονικό διάστημα...">
-    <label for="totalDuration">Εισάγετε τη συνολική διάρκεια του ήχου (σε δευτερόλεπτα):</label>
-    <input type="number" id="totalDuration" min="0.1" step="0.1" placeholder="Δώστε τη συνολική διάρκεια...">
-    <button onclick="startSound()">Δημιουργία Ηχητικού Σήματος</button>
-    <button onclick="stopSound()">Διακοπή Ηχητικού Σήματος</button>
-    <button onclick="exportSound()">Εξαγωγή Ηχητικού Σήματος</button>
-     
-    <script src="https://cdn.jsdelivr.net/npm/wav-encoder@1.0.1/dist/wav-encoder.min.js"></script>
-    <script>
-        var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        var intervalID;
-        var totalBuffer;
-        var source;
-        var totalDuration;
-        var currentTime = 0;
-        var buffers = [];
-
-        function generateSound() {
-            var duration = parseFloat(document.getElementById('duration').value);
-            if (isNaN(duration) || duration <= 0) {
-                alert("Παρακαλώ εισάγετε έγκυρη χρονική διάρκεια.");
-                return;
-            }
-                         
-            var sampleRate = 44100; // Δείγματα ανά δευτερόλεπτο
-            var frequency = 440.0; // Συχνότητα ήχου
-            var numSamples = parseInt(sampleRate * duration);
-            var audioData = new Float32Array(numSamples);
-                         
-            for (var i = 0; i < numSamples; i++) {
-                audioData[i] = Math.sin(2 * Math.PI * frequency * i / sampleRate);
-            }
-                         
-            var audioBuffer = audioCtx.createBuffer(1, numSamples, sampleRate);
-            audioBuffer.copyToChannel(audioData, 0);
-            
-            buffers.push(audioBuffer);
-                         
-            source = audioCtx.createBufferSource();
-            source.buffer = audioBuffer;
-            source.connect(audioCtx.destination);
-            source.start();
-            
-            currentTime += duration;
-            // Καθορίζει πότε θα σταματήσει ο ήχος
-            source.stop(audioCtx.currentTime + duration);
-        }
-
-        function startSound() {
-            currentTime = 0;
-            buffers = [];
-            var interval = parseFloat(document.getElementById('interval').value) * 1000; // Μετατροπή σε χιλιοστά του δευτερολέπτου
-            totalDuration = parseFloat(document.getElementById('totalDuration').value); // Διάρκεια σε δευτερόλεπτα
-
-            if (isNaN(interval) || interval <= 0 || isNaN(totalDuration) || totalDuration <= 0) {
-                alert("Παρακαλώ εισάγετε έγκυρο χρονικό διάστημα ή συνολική διάρκεια.");
-                return;
-            }
-
-            generateSound();  // Πρώτη αναπαραγωγή
-            intervalID = setInterval(function() {
-                if (currentTime < totalDuration) {
-                    generateSound();
-                } else {
-                    clearInterval(intervalID);
-                }
-            }, interval);  // Επαναλαμβανόμενες αναπαραγωγές
-        }
-
-        function stopSound() {
-            clearInterval(intervalID);
-            if (source) {
-                source.stop();
-            }
-        }
-
-        function exportSound() {
-            if (buffers.length === 0) {
-                alert("Δεν υπάρχει ηχητικό σήμα για εξαγωγή.");
-                return;
-            }
-            
-            // Δημιουργία ενός buffer για τη συνολική διάρκεια
-            var totalSamples = 0;
-            buffers.forEach(buffer => {
-                totalSamples += buffer.length;
-            });
-            
-            totalBuffer = audioCtx.createBuffer(1, totalSamples, audioCtx.sampleRate);
-            var offset = 0;
-            buffers.forEach(buffer => {
-                totalBuffer.copyToChannel(buffer.getChannelData(0), 0, offset);
-                offset += buffer.length;
-            });
-
-            const audioData = {
-                sampleRate: totalBuffer.sampleRate,
-                channelData: [totalBuffer.getChannelData(0)]
-            };
-            
-            WavEncoder.encode(audioData).then((buffer) => {
-                const blob = new Blob([buffer], { type: "audio/wav" });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.style.display = "none";
-                a.href = url;
-                a.download = "sound.wav";
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url);
-            });
-        }
-    </script>
-</body>
-</html>
-
-<!DOCTYPE html>
-<html lang="el">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Υπολογισμός Βάρδιας</title>
+    <title>Interval Timer</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
-            background-color: #f2f2f2;
             display: flex;
-            flex-direction: column;
-            align-items: center;
             justify-content: center;
+            align-items: center;
             height: 100vh;
-            margin: 0;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
         }
-        input, button {
-            padding: 10px;
+
+        .timer-container {
+            text-align: center;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        #timer-display {
+            font-size: 3em;
+            margin-bottom: 20px;
+        }
+
+        button {
+            font-size: 1em;
+            padding: 10px 20px;
             margin: 5px;
-            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        #start-button {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        #stop-button {
+            background-color: #f44336;
+            color: white;
+        }
+
+        #reset-button {
+            background-color: #008CBA;
+            color: white;
+        }
+
+        #lock-button {
+            background-color: #FF9800;
+            color: white;
+        }
+
+        input {
+            font-size: 1em;
+            padding: 5px;
+            margin: 5px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            text-align: center;
         }
     </style>
 </head>
 <body>
-    <h1>Υπολογισμός Βάρδιας</h1>
-    <label for="dateInput">Εισάγετε την ημερομηνία (π.χ. 2024-05-31):</label>
-    <input type="date" id="dateInput">
-    <button onclick="calculateShift()">Υπολογισμός</button>
-    <p id="result"></p>
+<div class="timer-container">
+    <h1>Interval Timer</h1>
+    <div id="timer-display">00:00.00</div>
+    <input type="number" id="time-input" placeholder="Time in seconds" min="0.11" max="360" step="0.01">
+    <input type="number" id="repeats-input" placeholder="Number of repeats" min="1">
+    <button id="start-button">Start</button>
+    <button id="stop-button">Stop</button>
+    <button id="reset-button">Reset</button>
+    <button id="lock-button">Lock</button>
+</div>
 
-    <script>
-        function calculateShift() {
-            const startDate = new Date('2024-05-31');
-            const inputDate = new Date(document.getElementById('dateInput').value);
-            const shifts = ['Πρωί', 'Μεσημέρι', 'Βράδυ', 'Αδιάθετο', 'Ρεπό'];
+<script>
+    let timer;
+    let timeLeft;
+    let repeats;
+    let repeatCount = 0;
+    let startTime;
+    let isLocked = false;
 
-            // Υπολογισμός της διαφοράς σε ημέρες
-            const diffTime = Math.abs(inputDate - startDate);
-            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    // Web Audio API context
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-            // Υπολογισμός βάρδιας
-            const shiftIndex = diffDays % shifts.length;
-            const shift = shifts[shiftIndex];
+    function playBeep(duration) {
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
 
-            document.getElementById('result').innerText = `Η βάρδια σου είναι: ${shift}`;
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(1000, audioCtx.currentTime); // Frequency in Hz
+        gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration); // Duration of beep
+
+        oscillator.start(audioCtx.currentTime);
+        oscillator.stop(audioCtx.currentTime + duration); // Duration of beep
+    }
+
+    function updateDisplay() {
+        const minutes = Math.floor(timeLeft / 60);
+        const displaySeconds = (timeLeft % 60).toFixed(2);
+        document.getElementById('timer-display').textContent =
+            String(minutes).padStart(2, '0') + ':' + String(displaySeconds).padStart(5, '0');
+    }
+
+    function startTimer() {
+        if (isLocked) return;
+
+        const timeInput = parseFloat(document.getElementById('time-input').value);
+        repeats = parseInt(document.getElementById('repeats-input').value);
+
+        if (isNaN(timeInput) || isNaN(repeats) || timeInput < 0.11 || timeInput > 360 || repeats < 1) {
+            alert('Please enter valid time and number of repeats.');
+            return;
         }
-    </script>
+
+        timeLeft = timeInput;
+        repeatCount = 0;
+        startTime = performance.now();
+
+        if (timer) cancelAnimationFrame(timer);
+        playBeep(0.39 * 3); // Play longer beep at the start
+        timer = requestAnimationFrame(tick);
+    }
+
+    function tick() {
+        const now = performance.now();
+        const elapsed = (now - startTime) / 1000;
+
+        timeLeft = parseFloat(document.getElementById('time-input').value) - elapsed;
+
+        if (timeLeft <= 0) {
+            repeatCount++;
+            if (repeatCount >= repeats) {
+                playBeep(0.39 * 3); // Play longer beep at the end
+                cancelAnimationFrame(timer);
+                alert('Completed all repeats!');
+                return;
+            } else {
+                timeLeft = parseFloat(document.getElementById('time-input').value);
+                startTime = performance.now();
+                playBeep(0.39); // Play normal beep at the start of each repeat
+            }
+        }
+
+        updateDisplay();
+        timer = requestAnimationFrame(tick);
+    }
+
+    function toggleLock() {
+        isLocked = !isLocked;
+        document.getElementById('lock-button').textContent = isLocked ? 'Unlock' : 'Lock';
+    }
+
+    document.getElementById('start-button').addEventListener('click', startTimer);
+
+    document.getElementById('stop-button').addEventListener('click', () => {
+        if (!isLocked) cancelAnimationFrame(timer);
+    });
+
+    document.getElementById('reset-button').addEventListener('click', () => {
+        if (!isLocked) {
+            cancelAnimationFrame(timer);
+            timeLeft = 0;
+            repeats = 0;
+            repeatCount = 0;
+            document.getElementById('time-input').value = '';
+            document.getElementById('repeats-input').value = '';
+            updateDisplay();
+        }
+    });
+
+    document.getElementById('lock-button').addEventListener('click', toggleLock);
+
+    updateDisplay();
+</script>
 </body>
 </html>
