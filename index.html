@@ -3,120 +3,107 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interval Timer</title>
+    <title>kellyfish</title>
     <style>
         body {
+            background-color: #1c1c1e;
+            color: #ffffff;
+            font-family: 'Roboto', sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
-            background-color: #f0f0f0;
-            font-family: Arial, sans-serif;
             margin: 0;
         }
-
         .timer-container {
-            text-align: center;
-            background: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: #2c2c2e;
             padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            width: 80%;
             max-width: 400px;
-            width: 100%;
         }
-
-        #timer-display, #interval-timer-display, #increment-display {
+        h1 {
+            margin-bottom: 20px;
+        }
+        #stopwatch-display, #interval-timer-display, #increment-display {
             font-size: 2em;
-            margin-bottom: 20px;
+            margin: 10px 0;
         }
-
-        .progress-bar {
+        progress {
             width: 100%;
-            background-color: #e0e0e0;
-            border-radius: 5px;
-            overflow: hidden;
-            margin-bottom: 20px;
-        }
-
-        .progress-bar-fill {
+            margin: 10px 0;
             height: 20px;
-            background-color: #3b82f6;
-            width: 0%;
-            transition: width 0.25s;
+            border-radius: 10px;
+            overflow: hidden;
         }
-
-        button {
-            font-size: 1em;
-            padding: 10px 20px;
+        progress::-webkit-progress-bar {
+            background-color: #404040;
+        }
+        progress::-webkit-progress-value {
+            background-color: #007aff;
+        }
+        input, button {
             margin: 5px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-
-        #start-button {
-            background-color: #4CAF50;
-            color: white;
-        }
-
-        #stop-button {
-            background-color: #f44336;
-            color: white;
-        }
-
-        #reset-button {
-            background-color: #008CBA;
-            color: white;
-        }
-
-        #lock-button {
-            background-color: #FF9800;
-            color: white;
-        }
-
-        button:hover {
-            opacity: 0.9;
-        }
-
-        input {
-            font-size: 1em;
             padding: 10px;
-            margin: 5px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            text-align: center;
-            width: calc(100% - 22px);
+            background: #404040;
+            border: 2px solid #007aff;
+            color: #ffffff;
+            border-radius: 8px;
+            font-size: 1em;
+            outline: none;
         }
-
+        button:hover {
+            background: #007aff;
+            color: #ffffff;
+            cursor: pointer;
+        }
+        button:disabled {
+            background: #606060;
+            border-color: #606060;
+            color: #333333;
+        }
         input:disabled {
-            background-color: #e0e0e0;
-            color: #888;
+            background: #606060;
+            border-color: #606060;
+            color: #333333;
+        }
+        .button-container {
+            display: flex;
+            justify-content: space-around;
+            width: 100%;
+        }
+        footer {
+            margin-top: 20px;
+            font-size: 0.8em;
+            color: #999999;
         }
     </style>
 </head>
 <body>
 <div class="timer-container">
-    <h1>Interval Timer</h1>
-    <div id="timer-display">00:00:00.00</div>
+    <h1>kellyfish</h1>
+    <div id="stopwatch-display">00:00:00</div>
+    <progress id="split-progress" max="100" value="0"></progress>
+    <progress id="total-progress" max="100" value="0"></progress>
     <div id="interval-timer-display">00:00.00</div>
     <div id="increment-display">0</div>
-    <div class="progress-bar">
-        <div id="split-progress" class="progress-bar-fill"></div>
-    </div>
-    <div class="progress-bar">
-        <div id="total-progress" class="progress-bar-fill"></div>
-    </div>
     <input type="text" id="pace-input" placeholder="Pace (mm:ss)">
     <input type="number" id="distance-input" placeholder="Distance per split (meters)" min="1">
     <input type="number" id="time-input" placeholder="Time in seconds" min="0.11" max="360" step="0.01">
     <input type="number" id="repeats-input" placeholder="Number of repeats" min="1">
-    <button id="start-button">Start</button>
-    <button id="stop-button">Stop</button>
-    <button id="reset-button">Reset</button>
-    <button id="lock-button">Lock</button>
+    <div class="button-container">
+        <button id="start-button">Start</button>
+        <button id="pause-button">Pause</button>
+        <button id="stop-button">Stop</button>
+        <button id="reset-button">Reset</button>
+        <button id="lock-button">Lock</button>
+    </div>
+    <footer>created with &hearts; by stef @ 2024</footer>
 </div>
-
 <script>
     let intervalTimer;
     let stopwatchTimer;
@@ -126,10 +113,12 @@
     let increment = 0;
     let startTime;
     let isLocked = false;
-    let stopwatchSeconds = 0;
     let isPaused = false;
-    let pauseTime = 0;
+    let stopwatchSeconds = 0;
+    let distancePerSplit = 0;
+    let pauseTime;
 
+    // Web Audio API context
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
     function playBeep(duration) {
@@ -140,28 +129,12 @@
         gainNode.connect(audioCtx.destination);
 
         oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(1500, audioCtx.currentTime);
+        oscillator.frequency.setValueAtTime(1000, audioCtx.currentTime); // Frequency in Hz
         gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+        gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration); // Duration of beep
 
         oscillator.start(audioCtx.currentTime);
-        oscillator.stop(audioCtx.currentTime + duration);
-    }
-
-    function vibrate(duration) {
-        if (navigator.vibrate) {
-            navigator.vibrate(duration);
-        }
-    }
-
-    async function toggleFlashlight(on) {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-            const track = stream.getVideoTracks()[0];
-            await track.applyConstraints({ advanced: [{ torch: on }] });
-        } catch (err) {
-            console.error('Error accessing the flashlight:', err);
-        }
+        oscillator.stop(audioCtx.currentTime + duration); // Duration of beep
     }
 
     function updateIntervalDisplay() {
@@ -169,26 +142,17 @@
         const displaySeconds = (timeLeft % 60).toFixed(2);
         document.getElementById('interval-timer-display').textContent =
             String(minutes).padStart(2, '0') + ':' + String(displaySeconds).padStart(5, '0');
-
-        const totalDuration = parseFloat(document.getElementById('time-input').value);
-        const progressPercentage = ((totalDuration - timeLeft) / totalDuration) * 100;
-        document.getElementById('split-progress').style.width = `${progressPercentage}%`;
-
-        const distanceInput = parseFloat(document.getElementById('distance-input').value);
-        const incrementalDistance = (distanceInput / totalDuration) * (totalDuration - timeLeft);
-        document.getElementById('increment-display').textContent = (increment + incrementalDistance).toFixed(2);
     }
 
     function updateStopwatchDisplay() {
         const hours = String(Math.floor(stopwatchSeconds / 3600)).padStart(2, '0');
         const minutes = String(Math.floor((stopwatchSeconds % 3600) / 60)).padStart(2, '0');
-        const seconds = String(Math.floor(stopwatchSeconds % 60)).padStart(2, '0');
-        const centiseconds = String(Math.floor((stopwatchSeconds % 1) * 100)).padStart(2, '0');
-        document.getElementById('timer-display').textContent = `${hours}:${minutes}:${seconds}.${centiseconds}`;
+        const seconds = String(stopwatchSeconds % 60).padStart(2, '0');
+        document.getElementById('stopwatch-display').textContent = `${hours}:${minutes}:${seconds}`;
+    }
 
-        const totalSplits = parseInt(document.getElementById('repeats-input').value);
-        const totalProgressPercentage = (repeatCount / totalSplits) * 100;
-        document.getElementById('total-progress').style.width = `${totalProgressPercentage}%`;
+    function updateIncrementDisplay() {
+        document.getElementById('increment-display').textContent = increment.toFixed(2);
     }
 
     function calculateIntervalTime() {
@@ -216,17 +180,6 @@
     function startTimer() {
         if (isLocked) return;
 
-        if (isPaused) {
-            startTime = Date.now() - pauseTime;
-            intervalTimer = setInterval(tick, 10);
-            stopwatchTimer = setInterval(() => {
-                stopwatchSeconds += 0.1; // increment by centiseconds
-                updateStopwatchDisplay();
-            }, 10); // 10 milliseconds for centiseconds
-            isPaused = false;
-            return;
-        }
-
         const intervalTime = calculateIntervalTime();
 
         if (intervalTime === null) return;
@@ -235,6 +188,7 @@
 
         const timeInput = parseFloat(document.getElementById('time-input').value);
         repeats = parseInt(document.getElementById('repeats-input').value);
+        distancePerSplit = parseFloat(document.getElementById('distance-input').value);
 
         if (isNaN(timeInput) || isNaN(repeats) || timeInput < 0.11 || timeInput > 360 || repeats < 1) {
             alert('Please enter valid time and number of repeats.');
@@ -245,47 +199,75 @@
         repeatCount = 0;
         increment = 0;
         stopwatchSeconds = 0;
-        startTime = Date.now();
+        startTime = performance.now();
 
-                if (intervalTimer) clearInterval(intervalTimer);
+        if (intervalTimer) cancelAnimationFrame(intervalTimer);
         if (stopwatchTimer) clearInterval(stopwatchTimer);
 
-        playBeep(0.39); // Play normal beep at the start
-        intervalTimer = setInterval(tick, 10);
+        playBeep(0.39 * 3); // Play longer beep at the start
+        intervalTimer = requestAnimationFrame(tick);
         stopwatchTimer = setInterval(() => {
-            stopwatchSeconds += 0.01; // increment by centiseconds
+            stopwatchSeconds++;
             updateStopwatchDisplay();
-        }, 10); // 10 milliseconds for centiseconds
+        }, 1000);
+    }
+
+    function pauseTimer() {
+        if (!isLocked && !isPaused) {
+            isPaused = true;
+            pauseTime = performance.now();
+            cancelAnimationFrame(intervalTimer);
+            clearInterval(stopwatchTimer);
+            document.getElementById('pause-button').textContent = 'Resume';
+        } else if (isPaused) {
+            isPaused = false;
+            startTime += (performance.now() - pauseTime);
+            intervalTimer = requestAnimationFrame(tick);
+            stopwatchTimer = setInterval(() => {
+                stopwatchSeconds++;
+                updateStopwatchDisplay();
+            }, 1000);
+            document.getElementById('pause-button').textContent = 'Pause';
+        }
     }
 
     function tick() {
-        const now = Date.now();
+        const now = performance.now();
         const elapsed = (now - startTime) / 1000;
 
-        timeLeft = parseFloat(document.getElementById('time-input').value) - elapsed;
+        const initialTime = parseFloat(document.getElementById('time-input').value);
+        timeLeft = initialTime - elapsed;
+
+        const splitProgress = ((initialTime - timeLeft) / initialTime) * 100;
+        document.getElementById('split-progress').value = splitProgress;
+
+                const incrementProgress = distancePerSplit * (splitProgress / 100);
+        document.getElementById('increment-display').textContent = (increment + incrementProgress).toFixed(2);
 
         if (timeLeft <= 0) {
             repeatCount++;
-            increment += parseFloat(document.getElementById('distance-input').value);
+            increment += distancePerSplit;
             updateIncrementDisplay();
 
+            const totalSplits = parseFloat(document.getElementById('repeats-input').value);
+            const totalProgress = (repeatCount / totalSplits) * 100;
+            document.getElementById('total-progress').value = totalProgress;
+
             if (repeatCount >= repeats) {
-                playBeep(1.17); // Play longer beep at the end
-                clearInterval(intervalTimer);
+                playBeep(0.39 * 3); // Play longer beep at the end
+                cancelAnimationFrame(intervalTimer);
                 clearInterval(stopwatchTimer);
                 alert('Completed all repeats!');
                 return;
             } else {
-                timeLeft = parseFloat(document.getElementById('time-input').value);
-                startTime = Date.now();
+                timeLeft = initialTime;
+                startTime = performance.now();
                 playBeep(0.39); // Play normal beep at the start of each repeat
-                vibrate(1000); // Vibrate for 1 second
-                toggleFlashlight(true);
-                setTimeout(() => toggleFlashlight(false), 1000); // Turn off the flashlight after 1 second
             }
         }
 
         updateIntervalDisplay();
+        intervalTimer = requestAnimationFrame(tick);
     }
 
     function toggleLock() {
@@ -296,72 +278,43 @@
         inputs.forEach(input => {
             input.disabled = isLocked;
         });
+        const buttons = document.querySelectorAll('button:not(#lock-button)');
+        buttons.forEach(button => {
+            button.disabled = isLocked;
+        });
     }
 
     document.getElementById('start-button').addEventListener('click', startTimer);
-
+    document.getElementById('pause-button').addEventListener('click', pauseTimer);
     document.getElementById('stop-button').addEventListener('click', () => {
         if (!isLocked) {
-            clearInterval(intervalTimer);
+            cancelAnimationFrame(intervalTimer);
             clearInterval(stopwatchTimer);
-            isPaused = true;
-            pauseTime = Date.now() - startTime;
         }
     });
-
     document.getElementById('reset-button').addEventListener('click', () => {
         if (!isLocked) {
-            clearInterval(intervalTimer);
+            cancelAnimationFrame(intervalTimer);
             clearInterval(stopwatchTimer);
             timeLeft = 0;
             repeats = 0;
             repeatCount = 0;
             increment = 0;
             stopwatchSeconds = 0;
-            isPaused = false;
-            pauseTime = 0;
             document.getElementById('time-input').value = '';
             document.getElementById('repeats-input').value = '';
             document.getElementById('pace-input').value = '';
             document.getElementById('distance-input').value = '';
             updateIntervalDisplay();
-            updateStopwatchDisplay();
-            document.getElementById('timer-display').textContent = '00:00:00.00';
-            document.getElementById('split-progress').style.width = '0%';
-            document.getElementById('total-progress').style.width = '0%';
+            updateIncrementDisplay();
+            document.getElementById('stopwatch-display').textContent = '00:00:00';
+            document.getElementById('split-progress').value = 0;
+            document.getElementById('total-progress').value = 0;
+            document.getElementById('pause-button').textContent = 'Pause';
+            isPaused = false;
         }
     });
-
     document.getElementById('lock-button').addEventListener('click', toggleLock);
-
-    function preventScreenLock() {
-        if (navigator.wakeLock && navigator.wakeLock.request) {
-            try {
-                let wakeLock = null;
-                const requestWakeLock = async () => {
-                    wakeLock = await navigator.wakeLock.request('screen');
-                    wakeLock.addEventListener('release', () => {
-                        console.log('Screen Wake Lock was released');
-                    });
-                    console.log('Screen Wake Lock is active');
-                };
-                requestWakeLock();
-                document.addEventListener('visibilitychange', async () => {
-                    if (wakeLock !== null && document.visibilityState === 'visible') {
-                        requestWakeLock();
-                    }
-                });
-            } catch (err) {
-                console.error('Screen Wake Lock error:', err);
-            }
-        }
-    }
-
-    preventScreenLock();
-
-    function updateIncrementDisplay() {
-        document.getElementById('increment-display').textContent = increment.toFixed(2);
-    }
 
     updateIntervalDisplay();
     updateIncrementDisplay();
