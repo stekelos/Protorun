@@ -98,7 +98,7 @@
 <body>
 <div class="timer-container">
     <h1>Interval Timer</h1>
-    <div id="timer-display">00:00:00</div>
+    <div id="timer-display">00:00:00.00</div>
     <div id="interval-timer-display">00:00.00</div>
     <div id="increment-display">0</div>
     <div class="progress-bar">
@@ -130,7 +130,6 @@
     let isPaused = false;
     let pauseTime = 0;
 
-    // Web Audio API context
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
     function playBeep(duration) {
@@ -141,12 +140,28 @@
         gainNode.connect(audioCtx.destination);
 
         oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(1000, audioCtx.currentTime); // Frequency in Hz
+        oscillator.frequency.setValueAtTime(1500, audioCtx.currentTime);
         gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration); // Duration of beep
+        gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
 
         oscillator.start(audioCtx.currentTime);
-        oscillator.stop(audioCtx.currentTime + duration); // Duration of beep
+        oscillator.stop(audioCtx.currentTime + duration);
+    }
+
+    function vibrate(duration) {
+        if (navigator.vibrate) {
+            navigator.vibrate(duration);
+        }
+    }
+
+    async function toggleFlashlight(on) {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+            const track = stream.getVideoTracks()[0];
+            await track.applyConstraints({ advanced: [{ torch: on }] });
+        } catch (err) {
+            console.error('Error accessing the flashlight:', err);
+        }
     }
 
     function updateIntervalDisplay() {
@@ -158,21 +173,22 @@
         const totalDuration = parseFloat(document.getElementById('time-input').value);
         const progressPercentage = ((totalDuration - timeLeft) / totalDuration) * 100;
         document.getElementById('split-progress').style.width = `${progressPercentage}%`;
+
+        const distanceInput = parseFloat(document.getElementById('distance-input').value);
+        const incrementalDistance = (distanceInput / totalDuration) * (totalDuration - timeLeft);
+        document.getElementById('increment-display').textContent = (increment + incrementalDistance).toFixed(2);
     }
 
     function updateStopwatchDisplay() {
         const hours = String(Math.floor(stopwatchSeconds / 3600)).padStart(2, '0');
         const minutes = String(Math.floor((stopwatchSeconds % 3600) / 60)).padStart(2, '0');
-        const seconds = String(stopwatchSeconds % 60).padStart(2, '0');
-        document.getElementById('timer-display').textContent = `${hours}:${minutes}:${seconds}`;
+        const seconds = String(Math.floor(stopwatchSeconds % 60)).padStart(2, '0');
+        const centiseconds = String(Math.floor((stopwatchSeconds % 1) * 100)).padStart(2, '0');
+        document.getElementById('timer-display').textContent = `${hours}:${minutes}:${seconds}.${centiseconds}`;
 
         const totalSplits = parseInt(document.getElementById('repeats-input').value);
         const totalProgressPercentage = (repeatCount / totalSplits) * 100;
         document.getElementById('total-progress').style.width = `${totalProgressPercentage}%`;
-    }
-
-    function updateIncrementDisplay() {
-        document.getElementById('increment-display').textContent = increment;
     }
 
     function calculateIntervalTime() {
@@ -201,12 +217,12 @@
         if (isLocked) return;
 
         if (isPaused) {
-            startTime = performance.now() - pauseTime;
-            intervalTimer = requestAnimationFrame(tick);
+            startTime = Date.now() - pauseTime;
+            intervalTimer = setInterval(tick, 10);
             stopwatchTimer = setInterval(() => {
-                stopwatchSeconds++;
+                stopwatchSeconds += 0.1; // increment by centiseconds
                 updateStopwatchDisplay();
-            }, 1000);
+            }, 10); // 10 milliseconds for centiseconds
             isPaused = false;
             return;
         }
@@ -229,21 +245,21 @@
         repeatCount = 0;
         increment = 0;
         stopwatchSeconds = 0;
-        startTime = performance.now();
+        startTime = Date.now();
 
-        if (intervalTimer) cancelAnimationFrame(intervalTimer);
+                if (intervalTimer) clearInterval(intervalTimer);
         if (stopwatchTimer) clearInterval(stopwatchTimer);
 
-        playBeep(0.39 * 3); // Play longer beep at the start
-        intervalTimer = requestAnimationFrame(tick);
+        playBeep(0.39); // Play normal beep at the start
+        intervalTimer = setInterval(tick, 10);
         stopwatchTimer = setInterval(() => {
-            stopwatchSeconds++;
+            stopwatchSeconds += 0.01; // increment by centiseconds
             updateStopwatchDisplay();
-        }, 1000);
+        }, 10); // 10 milliseconds for centiseconds
     }
 
     function tick() {
-        const now = performance.now();
+        const now = Date.now();
         const elapsed = (now - startTime) / 1000;
 
         timeLeft = parseFloat(document.getElementById('time-input').value) - elapsed;
@@ -254,20 +270,22 @@
             updateIncrementDisplay();
 
             if (repeatCount >= repeats) {
-                playBeep(0.39 * 3); // Play longer beep at the end
-                cancelAnimationFrame(intervalTimer);
+                playBeep(1.17); // Play longer beep at the end
+                clearInterval(intervalTimer);
                 clearInterval(stopwatchTimer);
                 alert('Completed all repeats!');
                 return;
             } else {
                 timeLeft = parseFloat(document.getElementById('time-input').value);
-                startTime = performance.now();
+                startTime = Date.now();
                 playBeep(0.39); // Play normal beep at the start of each repeat
+                vibrate(1000); // Vibrate for 1 second
+                toggleFlashlight(true);
+                setTimeout(() => toggleFlashlight(false), 1000); // Turn off the flashlight after 1 second
             }
         }
 
         updateIntervalDisplay();
-        intervalTimer = requestAnimationFrame(tick);
     }
 
     function toggleLock() {
@@ -284,16 +302,16 @@
 
     document.getElementById('stop-button').addEventListener('click', () => {
         if (!isLocked) {
-            cancelAnimationFrame(intervalTimer);
+            clearInterval(intervalTimer);
             clearInterval(stopwatchTimer);
             isPaused = true;
-            pauseTime = performance.now() - startTime;
+            pauseTime = Date.now() - startTime;
         }
     });
 
     document.getElementById('reset-button').addEventListener('click', () => {
         if (!isLocked) {
-            cancelAnimationFrame(intervalTimer);
+            clearInterval(intervalTimer);
             clearInterval(stopwatchTimer);
             timeLeft = 0;
             repeats = 0;
@@ -307,8 +325,8 @@
             document.getElementById('pace-input').value = '';
             document.getElementById('distance-input').value = '';
             updateIntervalDisplay();
-            updateIncrementDisplay();
-            document.getElementById('timer-display').textContent = '00:00:00';
+            updateStopwatchDisplay();
+            document.getElementById('timer-display').textContent = '00:00:00.00';
             document.getElementById('split-progress').style.width = '0%';
             document.getElementById('total-progress').style.width = '0%';
         }
@@ -316,9 +334,39 @@
 
     document.getElementById('lock-button').addEventListener('click', toggleLock);
 
+    function preventScreenLock() {
+        if (navigator.wakeLock && navigator.wakeLock.request) {
+            try {
+                let wakeLock = null;
+                const requestWakeLock = async () => {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    wakeLock.addEventListener('release', () => {
+                        console.log('Screen Wake Lock was released');
+                    });
+                    console.log('Screen Wake Lock is active');
+                };
+                requestWakeLock();
+                document.addEventListener('visibilitychange', async () => {
+                    if (wakeLock !== null && document.visibilityState === 'visible') {
+                        requestWakeLock();
+                    }
+                });
+            } catch (err) {
+                console.error('Screen Wake Lock error:', err);
+            }
+        }
+    }
+
+    preventScreenLock();
+
+    function updateIncrementDisplay() {
+        document.getElementById('increment-display').textContent = increment.toFixed(2);
+    }
+
     updateIntervalDisplay();
     updateIncrementDisplay();
     updateStopwatchDisplay();
 </script>
 </body>
 </html>
+
