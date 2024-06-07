@@ -204,7 +204,7 @@
         if (intervalTimer) cancelAnimationFrame(intervalTimer);
         if (stopwatchTimer) clearInterval(stopwatchTimer);
 
-        playBeep(0.39 * 3); // Play longer beep at the start
+        playBeep(0.5); // Play beep at the start
         intervalTimer = requestAnimationFrame(tick);
         stopwatchTimer = setInterval(() => {
             stopwatchSeconds++;
@@ -241,7 +241,7 @@
         const splitProgress = ((initialTime - timeLeft) / initialTime) * 100;
         document.getElementById('split-progress').value = splitProgress;
 
-                const incrementProgress = distancePerSplit * (splitProgress / 100);
+        const incrementProgress = distancePerSplit * (splitProgress / 100);
         document.getElementById('increment-display').textContent = (increment + incrementProgress).toFixed(2);
 
         if (timeLeft <= 0) {
@@ -254,7 +254,7 @@
             document.getElementById('total-progress').value = totalProgress;
 
             if (repeatCount >= repeats) {
-                playBeep(0.39 * 3); // Play longer beep at the end
+                playBeep(0.5); // Play beep at the end
                 cancelAnimationFrame(intervalTimer);
                 clearInterval(stopwatchTimer);
                 alert('Completed all repeats!');
@@ -262,7 +262,7 @@
             } else {
                 timeLeft = initialTime;
                 startTime = performance.now();
-                playBeep(0.39); // Play normal beep at the start of each repeat
+                playBeep(0.5); // Play beep at the start of each repeat
             }
         }
 
@@ -320,6 +320,7 @@
     updateIncrementDisplay();
     updateStopwatchDisplay();
 </script>
+
 </body>
 </html>
 
